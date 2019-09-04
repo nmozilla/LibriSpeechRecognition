@@ -83,9 +83,11 @@ log_writer = SummaryWriter(conf['meta_variable']['training_log_dir']+conf['meta_
 print('Training starts...',flush=True)
 
 under_sampling = 0.01
-max_count_batch = int(under_sampling * len(train_set))
+max_count_batch = int(under_sampling * len(train_set) / conf['training_parameter']['batch_size'])
+print("max_count_batch: ", max_count_batch, "batch size: ", conf['training_parameter']['batch_size'])
+my_global_step = 0
 
-while global_step < total_steps:
+while my_global_step < (total_steps / conf['training_parameter']['batch_size']):
     # Teacher forcing rate linearly decay
     tf_rate = tf_rate_upperbound - (tf_rate_upperbound-tf_rate_lowerbound)*min((float(global_step)/tf_decay_step),1)
 
@@ -124,7 +126,9 @@ while global_step < total_steps:
         if batch_counter >= max_count_batch:
             break
 
-    
+    my_global_step += 1
+    print('my global step: ', my_global_step)
+
     val_loss = np.array([sum(val_loss)/len(val_loss)])
     val_ler = np.array([sum(val_ler)/len(val_ler)])
     log_writer.add_scalars('loss',{'dev':val_loss}, global_step)

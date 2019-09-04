@@ -1,0 +1,31 @@
+/var/spool/slurmd/job7635557/slurm_script: line 10: pip3: command not found
+/var/spool/slurmd/job7635557/slurm_script: line 11: pip3: command not found
+Solving environment: ...working... done
+
+
+==> WARNING: A newer version of conda exists. <==
+  current version: 4.5.11
+  latest version: 4.7.11
+
+Please update conda by running
+
+    $ conda update -n base -c defaults conda
+
+
+
+# All requested packages already installed.
+
+Loading configure file at /data/s3559734/Listen-Attend-and-Spell-Pytorch/config/las_libri_config.yaml
+
+Experiment : libri_4_heads_batch_8_ small_ trainset
+Loading LibriSpeech data from /data/s3559734/Librispeech//train.csv ...
+Loading LibriSpeech data from /data/s3559734/Librispeech//dev.csv ...
+train_libri.py:26: YAMLLoadWarning: calling yaml.load() without Loader=... is deprecated, as the default Loader is unsafe. Please read https://msg.pyyaml.org/load for full details.
+  conf = yaml.load(open(config_path,'r'))
+  0%|          | 0/2703 [00:00<?, ?it/s]  1%|          | 22/2703 [00:00<00:53, 49.67it/s]  3%|▎         | 83/2703 [00:00<00:38, 68.54it/s]  6%|▌         | 166/2703 [00:00<00:26, 94.48it/s]  9%|▉         | 238/2703 [00:00<00:19, 127.75it/s] 11%|█▏        | 310/2703 [00:00<00:14, 169.58it/s] 14%|█▍        | 385/2703 [00:00<00:10, 220.80it/s] 17%|█▋        | 464/2703 [00:01<00:07, 280.38it/s] 20%|█▉        | 540/2703 [00:01<00:06, 344.46it/s] 23%|██▎       | 623/2703 [00:01<00:04, 417.54it/s] 26%|██▌       | 706/2703 [00:01<00:04, 490.25it/s] 29%|██▉       | 782/2703 [00:01<00:03, 544.47it/s] 32%|███▏      | 861/2703 [00:01<00:03, 596.35it/s] 35%|███▍      | 937/2703 [00:01<00:02, 622.64it/s] 38%|███▊      | 1018/2703 [00:01<00:02, 666.91it/s] 41%|████      | 1099/2703 [00:01<00:02, 703.93it/s] 44%|████▍     | 1185/2703 [00:01<00:02, 739.64it/s] 47%|████▋     | 1271/2703 [00:02<00:01, 770.95it/s] 50%|█████     | 1353/2703 [00:02<00:01, 773.09it/s] 53%|█████▎    | 1434/2703 [00:02<00:01, 753.21it/s] 56%|█████▌    | 1512/2703 [00:02<00:01, 759.90it/s] 59%|█████▉    | 1590/2703 [00:02<00:01, 755.30it/s] 62%|██████▏   | 1670/2703 [00:02<00:01, 767.39it/s] 65%|██████▍   | 1751/2703 [00:02<00:01, 774.81it/s] 68%|██████▊   | 1838/2703 [00:02<00:01, 795.48it/s] 71%|███████   | 1922/2703 [00:02<00:00, 808.05it/s] 74%|███████▍  | 2004/2703 [00:03<00:00, 807.86it/s] 77%|███████▋  | 2086/2703 [00:03<00:00, 779.95it/s] 80%|████████  | 2165/2703 [00:03<00:00, 766.82it/s] 83%|████████▎ | 2243/2703 [00:03<00:00, 743.98it/s] 86%|████████▌ | 2328/2703 [00:03<00:00, 772.81it/s] 89%|████████▉ | 2412/2703 [00:03<00:00, 786.91it/s] 92%|█████████▏| 2497/2703 [00:03<00:00, 804.13it/s] 95%|█████████▌| 2578/2703 [00:03<00:00, 788.91it/s] 98%|█████████▊| 2661/2703 [00:03<00:00, 800.14it/s]100%|██████████| 2703/2703 [00:03<00:00, 690.50it/s]
+  0%|          | 0/2703 [00:00<?, ?it/s] 28%|██▊       | 765/2703 [00:00<00:00, 7642.85it/s] 62%|██████▏   | 1674/2703 [00:00<00:00, 8025.05it/s]100%|█████████▉| 2694/2703 [00:00<00:00, 8573.12it/s]100%|██████████| 2703/2703 [00:00<00:00, 8970.07it/s]
+  0%|          | 0/338 [00:00<?, ?it/s] 11%|█         | 36/338 [00:00<00:00, 354.59it/s] 27%|██▋       | 91/338 [00:00<00:00, 395.95it/s] 47%|████▋     | 159/338 [00:00<00:00, 452.63it/s] 79%|███████▉  | 268/338 [00:00<00:00, 548.46it/s]Training starts...
+max_count_batch:  35 batch size:  8
+Current step : 0Current step : 1Current step : 2Current step : 3Current step : 4Current step : 5Current step : 6Current step : 7Current step : 8Current step : 9Current step : 10Current step : 11Current step : 12Current step : 13Current step : 14Current step : 15Current step : 16Current step : 17Current step : 18Current step : 19Current step : 20Current step : 21Current step : 22Current step : 23Current step : 24Current step : 25Current step : 26Current step : 27Current step : 28Current step : 29Current step : 30Current step : 31Current step : 32Current step : 33Current step : 34my global step:  1
+Reached best CER 0.9648474606254966 at step 35 ,checkpoint saved.
+Current step : 35Current step : 36Current step : 37Current step : 38Current step : 39Current step : 40Current step : 41Current step : 42Current step : 43Current step : 44Current step : 45Current step : 46Current step : 47Current step : 48
