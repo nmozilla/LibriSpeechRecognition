@@ -83,14 +83,14 @@ log_writer = SummaryWriter(conf['meta_variable']['training_log_dir']+conf['meta_
 print('Training starts...',flush=True)
 
 under_sampling = 0.01
-while global_step < total_steps:
+max_count_batch = int(under_sampling * len(train_set))
 
+while global_step < total_steps:
     # Teacher forcing rate linearly decay
     tf_rate = tf_rate_upperbound - (tf_rate_upperbound-tf_rate_lowerbound)*min((float(global_step)/tf_decay_step),1)
 
-    perm = np.random.permutation(len(train_set))
-    train_set = [train_set[i] for i in perm[:int(under_sampling*len(perm))]]
     # Training
+    batch_counter = 0
     for batch_data,batch_label in train_set:
         print('Current step :', global_step,end='\r',flush=True)
         
@@ -105,19 +105,25 @@ while global_step < total_steps:
         if global_step % valid_step == 0:
             break
 
+        batch_counter += 1
+        if batch_counter >= max_count_batch:
+            break
     
     # Validation
     val_loss = []
     val_ler = []
 
-    perm = np.random.permutation(len(valid_set))
-    valid_set = [valid_set[i] for i in perm[:int(under_sampling*len(perm))]]
+    batch_counter = 0
     for batch_data,batch_label in valid_set:
         batch_loss, batch_ler = batch_iterator(batch_data, batch_label, listener, speller, optimizer, 
                                                tf_rate, is_training=False, data='libri', **conf['model_parameter'])
         val_loss.append(batch_loss)
         val_ler.extend(batch_ler)
-    
+
+        batch_counter += 1
+        if batch_counter >= max_count_batch:
+            break
+
     
     val_loss = np.array([sum(val_loss)/len(val_loss)])
     val_ler = np.array([sum(val_ler)/len(val_ler)])
