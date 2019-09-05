@@ -12,6 +12,9 @@ from tensorboardX import SummaryWriter
 import argparse
 
 
+torch.cuda.set_device(1)
+
+
 parser = argparse.ArgumentParser(description='Training script for LAS on Librispeech .')
 
 parser.add_argument('config_path', metavar='config_path', type=str,
@@ -82,24 +85,39 @@ log_writer = SummaryWriter(conf['meta_variable']['training_log_dir']+conf['meta_
 # Training
 print('Training starts...',flush=True)
 
-under_sampling = 0.01
-max_count_batch = int(under_sampling * len(train_set) / conf['training_parameter']['batch_size'])
-print("max_count_batch: ", max_count_batch, "batch size: ", conf['training_parameter']['batch_size'])
-my_global_step = 0
 
-while my_global_step < (total_steps / conf['training_parameter']['batch_size']):
+#### LIMITING RUNNING TIME BY PROCESSING FEWER BATCHES
+# for DC sever
+# bs4 * 14 = 1 min
+# for Parag server
+# bs8 * 10 = 1 min
+total_time_mins = 120.
+total_steps = 50.
+batches_per_min = 14.
+### under sampling
+time_per_iter = total_time_mins / total_steps
+max_count_batch = int(time_per_iter * batches_per_min)
+###
+print("max_count_batch: ", max_count_batch)
+print("batch size: ", conf['training_parameter']['batch_size'])
+print("len train_set: ", len(train_set))
+#########################################################
+
+batch_step = 1
+while global_step < total_steps:
+    global_step += 1
     # Teacher forcing rate linearly decay
     tf_rate = tf_rate_upperbound - (tf_rate_upperbound-tf_rate_lowerbound)*min((float(global_step)/tf_decay_step),1)
 
     # Training
-    batch_counter = 0
-    for batch_data,batch_label in train_set:
-        print('Current step :', global_step,end='\r',flush=True)
+    batch_limit_counter = 0
+    for batch_data, batch_label in train_set:
+        print('Current step :', batch_step, end='\r',flush=True)
         
         batch_loss, batch_ler = batch_iterator(batch_data, batch_label, listener, speller, optimizer, tf_rate,
                                                is_training=True, data='libri', **conf['model_parameter'])
-        global_step += 1
-        batch_counter += 1
+        batch_step += 1
+        batch_limit_counter += 1
 
         if (global_step) % verbose_step == 0:
             log_writer.add_scalars('loss',{'train':batch_loss}, global_step)
@@ -108,26 +126,26 @@ while my_global_step < (total_steps / conf['training_parameter']['batch_size']):
         if global_step % valid_step == 0:
             break
 
-        if batch_counter >= max_count_batch:
+        if batch_limit_counter >= max_count_batch:
             break
     
     # Validation
     val_loss = []
     val_ler = []
+    del batch_data, batch_label
 
-    batch_counter = 0
+    batch_limit_counter = 0
     for batch_data,batch_label in valid_set:
         batch_loss, batch_ler = batch_iterator(batch_data, batch_label, listener, speller, optimizer, 
                                                tf_rate, is_training=False, data='libri', **conf['model_parameter'])
         val_loss.append(batch_loss)
         val_ler.extend(batch_ler)
 
-        batch_counter += 1
-        if batch_counter >= max_count_batch:
+        batch_limit_counter += 1
+        if batch_limit_counter >= max_count_batch:
             break
 
-    my_global_step += 1
-    print('my global step: ', my_global_step)
+    print('\n global step: ', global_step, flush=True)
 
     val_loss = np.array([sum(val_loss)/len(val_loss)])
     val_ler = np.array([sum(val_ler)/len(val_ler)])
