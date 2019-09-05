@@ -99,6 +99,7 @@ while my_global_step < (total_steps / conf['training_parameter']['batch_size']):
         batch_loss, batch_ler = batch_iterator(batch_data, batch_label, listener, speller, optimizer, tf_rate,
                                                is_training=True, data='libri', **conf['model_parameter'])
         global_step += 1
+        batch_counter += 1
 
         if (global_step) % verbose_step == 0:
             log_writer.add_scalars('loss',{'train':batch_loss}, global_step)
@@ -107,7 +108,6 @@ while my_global_step < (total_steps / conf['training_parameter']['batch_size']):
         if global_step % valid_step == 0:
             break
 
-        batch_counter += 1
         if batch_counter >= max_count_batch:
             break
     
