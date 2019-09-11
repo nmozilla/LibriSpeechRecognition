@@ -110,29 +110,33 @@ while global_step < total_steps:
     tf_rate = tf_rate_upperbound - (tf_rate_upperbound-tf_rate_lowerbound)*min((float(global_step)/tf_decay_step),1)
 
     # Training
+    train_loss = []
+    train_ler = []
     batch_limit_counter = 0
     for batch_data, batch_label in train_set:
         print('Current step :', batch_step, end='\r',flush=True)
         
         batch_loss, batch_ler = batch_iterator(batch_data, batch_label, listener, speller, optimizer, tf_rate,
                                                is_training=True, data='libri', **conf['model_parameter'])
+        train_loss.append(batch_loss)
+        train_ler.extend(batch_ler)
+
         batch_step += 1
         batch_limit_counter += 1
 
-        if (global_step) % verbose_step == 0:
-            log_writer.add_scalars('loss',{'train':batch_loss}, global_step)
-            log_writer.add_scalars('cer',{'train':np.array([np.array(batch_ler).mean()])}, global_step)
+        # if (global_step) % verbose_step == 0:
+        #     log_writer.add_scalars('loss',{'train':batch_loss}, global_step)
+        #     log_writer.add_scalars('cer',{'train':np.array([np.array(batch_ler).mean()])}, global_step)
         
         if global_step % valid_step == 0:
             break
 
         if batch_limit_counter >= max_count_batch:
             break
-    
+
     # Validation
     val_loss = []
     val_ler = []
-    del batch_data, batch_label
 
     batch_limit_counter = 0
     for batch_data,batch_label in valid_set:
@@ -147,12 +151,21 @@ while global_step < total_steps:
 
     print('\n global step: ', global_step, flush=True)
 
+    train_loss = np.array([sum(train_loss)/len(train_loss)])
+    train_ler = np.array([sum(train_ler)/len(train_ler)])
+
     val_loss = np.array([sum(val_loss)/len(val_loss)])
     val_ler = np.array([sum(val_ler)/len(val_ler)])
-    log_writer.add_scalars('loss',{'dev':val_loss}, global_step)
-    log_writer.add_scalars('cer',{'dev':val_ler}, global_step)
 
-    
+    print('loss', {'train': train_loss}, 'cer', {'train': train_ler}, global_step, flush=True)
+    print('loss', {'dev': val_loss}, 'cer', {'dev': val_ler}, global_step, flush=True)
+
+    log_writer.add_scalars('loss', {'train': train_loss}, global_step)
+    log_writer.add_scalars('cer', {'train': np.array([np.array(train_ler).mean()])}, global_step)
+
+    log_writer.add_scalars('loss', {'dev': val_loss}, global_step)
+    log_writer.add_scalars('cer', {'dev': val_ler}, global_step)
+
     # # Generate Example
     # if conf['model_parameter']['bucketing']:
     #     feature = listener(Variable(batch_data.float()).squeeze(0).cuda())
