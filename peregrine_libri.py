@@ -12,7 +12,7 @@ from tensorboardX import SummaryWriter
 import argparse
 
 
-torch.cuda.set_device(1)
+#torch.cuda.set_device(1)
 
 
 parser = argparse.ArgumentParser(description='Training script for LAS on Librispeech .')
@@ -93,7 +93,7 @@ print('Training starts...',flush=True)
 # bs8 * 10 = 1 min
 total_time_mins = 120.
 total_steps = 50.
-batches_per_min = 14.
+batches_per_min = 10.
 ### under sampling
 time_per_iter = total_time_mins / total_steps
 max_count_batch = int(time_per_iter * batches_per_min)
