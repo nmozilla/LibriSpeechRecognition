@@ -1,0 +1,8 @@
+----------Processing Datasets----------
+Training sets : ['train-clean-100/']
+Validation sets : ['dev-clean/']
+Testing sets : ['test-clean/']
+---------------------------------------
+Processing flac2wav...
+Training
+  0%|          | 0/28539 [00:00<?, ?it/s]
