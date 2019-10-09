@@ -31,6 +31,7 @@ class pBLSTMLayer(nn.Module):
         timestep = input_x.size(1)
         feature_dim = input_x.size(2)
         # Reduce time resolution
+        #print(input_x.shape)
         input_x = input_x.contiguous().view(batch_size,int(timestep/2),feature_dim*2)
         # Bidirectional RNN
         output,hidden = self.BLSTM(input_x)
@@ -75,6 +76,7 @@ class Speller(nn.Module):
         self.float_type = torch.torch.cuda.FloatTensor if use_gpu else torch.FloatTensor
         self.label_dim = output_class_dim
         self.rnn_layer = self.rnn_unit(output_class_dim+speller_hidden_dim,speller_hidden_dim,num_layers=speller_rnn_layer,batch_first=True)
+
         self.attention = Attention( mlp_preprocess_input=use_mlp_in_attention, preprocess_mlp_dim=mlp_dim_in_attention,
                                     activate=mlp_activate_in_attention, input_feature_dim=2*listener_hidden_dim,
                                     multi_head=multi_head)

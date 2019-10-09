@@ -1,7 +1,8 @@
 import yaml
 import os
 from util.librispeech_dataset import create_dataloader
-from util.functions import log_parser,batch_iterator, collapse_phn
+#from util.functions import log_parser,batch_iterator, collapse_phn
+from util.functions_parallel import log_parser,batch_iterator, collapse_phn
 from model.las_model import Listener,Speller
 import numpy as np
 from torch.autograd import Variable
@@ -12,8 +13,20 @@ from tensorboardX import SummaryWriter
 import argparse
 
 
-torch.cuda.set_device(2)
+#torch.cuda.set_device(2)
 
+class MyDataParallel(torch.nn.DataParallel):
+    def __getattr__(self, name):
+        return getattr(self.module, name)
+
+class LAS(torch.nn.Module):
+
+    def set_submodules(self, listener, speller):
+        self.listener = listener
+        self.speller = speller
+
+    def forward(self, x, **args):
+        return self.speller(self.listener(x), **args)
 
 parser = argparse.ArgumentParser(description='Training script for LAS on Librispeech .')
 
@@ -70,6 +83,13 @@ else:
     global_step = 0
     listener = Listener(**conf['model_parameter'])
     speller = Speller(**conf['model_parameter'])
+
+las_module = LAS()
+las_module.set_submodules(listener, speller)
+
+# make module run parallel
+las_module = torch.nn.DataParallel(las_module, device_ids=[0, 1, 2 ,3])
+
 optimizer = torch.optim.Adam([{'params':listener.parameters()}, {'params':speller.parameters()}],
                              lr=conf['training_parameter']['learning_rate'])
 
@@ -92,13 +112,14 @@ print('Training starts...',flush=True)
 # bs4 * 14 = 1 min
 # for Parag server
 # bs8 * 10 = 1 min
-total_time_mins = 10.
-total_steps = 50000.
-batches_per_min = 100.
+#total_time_mins = 60
+#total_steps = 20000
+# sampels per min per gpu
+#samples_per_min = 300
 ### under sampling
-time_per_iter = total_time_mins / total_steps
-#max_count_batch = int(time_per_iter * batches_per_min)
-max_count_batch = 1
+#time_per_iter = total_time_mins / total_steps
+#max_count_batch = int(time_per_iter * samples_per_min / 4)
+max_count_batch = 360 
 ###
 print("max_count_batch: ", max_count_batch)
 print("batch size: ", conf['training_parameter']['batch_size'])
@@ -119,14 +140,17 @@ while global_step < total_steps:
     train_ler = []
     batch_limit_counter = 0
     for batch_data, batch_label in train_set:
-        print('Current step :', batch_step, end='\r',flush=True)
+        print('batch step :', batch_step, end='\r',flush=True)
         if emp_normalize:
             batch_data = (batch_data - emp_mean) / emp_std
 
         #print("Batch_lable", torch.argmax(batch_label, dim=-1), flush = True)
         #print("Batch data min max: ", torch.max(batch_data), torch.min(batch_data), flush = True)
-        batch_loss, batch_ler = batch_iterator(batch_data, batch_label, listener, speller, optimizer, tf_rate,
+        batch_loss, batch_ler = batch_iterator(batch_data, batch_label, las_module, optimizer, tf_rate,
                                                is_training=True, data='libri', **conf['model_parameter'])
+        
+        #las_module.flatten_parameters()
+        
         train_loss.append(batch_loss)
         train_ler.extend(batch_ler)
 
@@ -154,7 +178,7 @@ while global_step < total_steps:
             batch_data = (batch_data - emp_mean) / emp_std
 
         #print("Batch_lable_test", torch.argmax(batch_label, dim=-1), flush= True)
-        batch_loss, batch_ler = batch_iterator(batch_data, batch_label, listener, speller, optimizer, 
+        batch_loss, batch_ler = batch_iterator(batch_data, batch_label, las_module, optimizer, 
                                                tf_rate, is_training=False, data='libri', **conf['model_parameter'])
         val_loss.append(batch_loss)
         val_ler.extend(batch_ler)
@@ -163,7 +187,7 @@ while global_step < total_steps:
         if batch_limit_counter >= max_count_batch:
             break
 
-    print('\n global step: ', global_step, flush=True)
+    print('\nGlobal step: ', global_step, flush=True)
 
     train_loss = np.array([sum(train_loss)/len(train_loss)])
     train_ler = np.array([sum(train_ler)/len(train_ler)])

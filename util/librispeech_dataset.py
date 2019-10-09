@@ -125,7 +125,7 @@ class LibrispeechDataset(Dataset):
             return len(self.X)
 
 
-def create_dataloader(data_path, max_label_len, batch_size, shuffle, bucketing, listener_layer, drop_last=False, training=False,
+def create_dataloader(data_path, max_label_len, batch_size, shuffle, bucketing, listener_layer, drop_last=True, training=False,
                     **kwargs):
     if not bucketing:
         return DataLoader(LibrispeechDataset(data_path, batch_size,max_label_len,bucketing,listener_layer,training=training),

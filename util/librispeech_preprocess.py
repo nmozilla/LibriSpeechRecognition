@@ -40,11 +40,12 @@ root = paras.root
 train_path = paras.tr_sets
 dev_path = paras.dev_sets
 test_path = paras.tt_sets
-n_jobs = paras.n_jobs
+#n_jobs = paras.n_jobs
+n_jobs = 50
 n_filters = paras.n_filters
 win_size = paras.win_size
 norm_x = paras.norm_x
-
+print(norm_x)
 
 def traverse(root,path,search_fix='.flac',return_label=False):
     f_list = []
