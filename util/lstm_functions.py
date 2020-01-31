@@ -12,13 +12,13 @@ import editdistance as ed
 # Output: onehot_x, a Variable containing onehot vector with shape [batch size, timesteps, encoding_dim]
 def CreateOnehotVariable( input_x, encoding_dim=63):
     if type(input_x) is Variable:
-        input_x = input_x.data 
+        input_x = input_x.data
     input_type = type(input_x)
     batch_size = input_x.size(0)
     time_steps = input_x.size(1)
     input_x = input_x.unsqueeze(2).type(torch.LongTensor)
     onehot_x = Variable(torch.LongTensor(batch_size, time_steps, encoding_dim).zero_().scatter_(-1,input_x,1)).type(input_type)
-    
+
     return onehot_x
 
 # TimeDistributed function
@@ -38,9 +38,13 @@ def TimeDistributed(input_module, input_x):
 # Merge the repeated prediction and calculate editdistance of prediction and ground truth
 def LetterErrorRate(pred_y,true_y,data):
     ed_accumalate = []
+    #print('pred_y',pred_y)
+    #print('true_y',true_y)
     for p,t in zip(pred_y,true_y):
+        #print('t',t)
+        #print('p',p)
         compressed_t = [w for w in t if (w!=1 and w!=0)]
-        
+        #print('compressed_t',compressed_t)
         compressed_p = []
         for p_w in p:
             if p_w == 0:
@@ -48,9 +52,12 @@ def LetterErrorRate(pred_y,true_y,data):
             if p_w == 1:
                 break
             compressed_p.append(p_w)
+        #print('compressed_p',compressed_p)
         if data == 'timit':
             compressed_t = collapse_phn(compressed_t)
             compressed_p = collapse_phn(compressed_p)
+        #print('len(compressed_t)',len(compressed_t))
+        #print('ed.eval(compressed_p,compressed_t)',ed.eval(compressed_p,compressed_t))
         ed_accumalate.append(ed.eval(compressed_p,compressed_t)/len(compressed_t))
     return ed_accumalate
 
@@ -60,7 +67,7 @@ def label_smoothing_loss(pred_y,true_y,label_smoothing=0.1):
     assert pred_y.size() == true_y.size()
 
     seq_len = torch.sum(torch.sum(true_y,dim=-1),dim=-1,keepdim=True)
-    
+
     # calculate smoothen label, last term ensures padding vector remains all zero
     class_dim = true_y.size()[-1]
     smooth_y = ((1.0-label_smoothing)*true_y+(label_smoothing/class_dim))*torch.sum(true_y,dim=-1,keepdim=True)
@@ -69,9 +76,7 @@ def label_smoothing_loss(pred_y,true_y,label_smoothing=0.1):
 
     return loss
 
-
-#def batch_iterator(batch_data, batch_label, listener, speller, optimizer, tf_rate, is_training, data='timit',**kwargs):
-def batch_iterator(batch_data, batch_label, las_module, optimizer, tf_rate, is_training, data='libri',**kwargs):
+def batch_iterator(batch_data, batch_label, lstm, optimizer, tf_rate, is_training, data='libri',**kwargs):
     bucketing = kwargs['bucketing']
     use_gpu = kwargs['use_gpu']
     output_class_dim = kwargs['output_class_dim']
@@ -81,33 +86,37 @@ def batch_iterator(batch_data, batch_label, las_module, optimizer, tf_rate, is_t
     if bucketing:
         batch_data = batch_data.squeeze(dim=0)
         batch_label = batch_label.squeeze(dim=0)
+    #print(batch_data.shape)
     current_batch_size = len(batch_data)
     max_label_len = min([batch_label.size()[1],kwargs['max_label_len']])
 
     batch_data = Variable(batch_data).type(torch.FloatTensor)
     batch_label = Variable(batch_label, requires_grad=False)
-    criterion = nn.NLLLoss(ignore_index=0)
+    #criterion = nn.NLLLoss(ignore_index=0) nn.NLLLoss(ignore_index=0)
+    criterion = nn.CrossEntropyLoss() #reduce=True, reduction='sum')#ignore_index=0)
     if use_gpu:
         batch_data = batch_data.cuda()
         batch_label = batch_label.cuda()
         criterion = criterion.cuda()
     # Forwarding
     optimizer.zero_grad()
-    #listner_feature = listener(batch_data)
-    if is_training:
-        #raw_pred_seq, _ = speller(listner_feature,ground_truth=batch_label,teacher_force_rate=tf_rate)
-        raw_pred_seq, _ = las_module(batch_data, ground_truth=batch_label,teacher_force_rate=tf_rate)
-    else:
-        #raw_pred_seq, _ = speller(listner_feature,ground_truth=None,teacher_force_rate=0)
-        raw_pred_seq, _ = las_module(batch_data, ground_truth=None,teacher_force_rate=0)
+    #Nina_batchData = Variable(batch_data.squeeze(dim=0)).type(torch.FloatTensor).cuda()  
+    raw_pred_seq = lstm(batch_data)
+    #print('raw_pred_seq',raw_pred_seq)
+    #pred_y = (torch.cat([torch.unsqueeze(each_y,1) for each_y in raw_pred_seq],1)[:,:max_label_len,:]).contiguous()
+    pred_y = raw_pred_seq
 
-    pred_y = (torch.cat([torch.unsqueeze(each_y,1) for each_y in raw_pred_seq],1)[:,:max_label_len,:]).contiguous()
+    #max_label_len = min(max_label_len, pred_y.shape[1])
 
     if label_smoothing == 0.0 or not(is_training):
-        pred_y = pred_y.permute(0,2,1)#pred_y.contiguous().view(-1,output_class_dim)
+        pred_y = pred_y.permute(0,2,1)[:,:,:max_label_len].contiguous() #pred_y.contiguous().view(-1,output_class_dim)
         true_y = torch.max(batch_label,dim=2)[1][:,:max_label_len].contiguous()#.view(-1)
-
+        #print(true_y.shape, pred_y.shape)
+        #print('pred gt gt_orig', pred_y.shape, true_y.shape, batch_label.shape)
         loss = criterion(pred_y,true_y)
+        #print('loss',loss)
+        #loss.backward()
+        #optimizer.step()
         # variable -> numpy before sending into LER calculator
         batch_ler = LetterErrorRate(torch.max(pred_y.permute(0,2,1),dim=2)[1].cpu().numpy(),#.reshape(current_batch_size,max_label_len),
                                     true_y.cpu().data.numpy(),data) #.reshape(current_batch_size,max_label_len), data)
@@ -115,6 +124,7 @@ def batch_iterator(batch_data, batch_label, las_module, optimizer, tf_rate, is_t
     else:
         true_y = batch_label[:,:max_label_len,:].contiguous()
         true_y = true_y.type(torch.cuda.FloatTensor) if use_gpu else true_y.type(torch.FloatTensor)
+        #print(true_y.shape, pred_y.shape)
         loss = label_smoothing_loss(pred_y,true_y,label_smoothing=label_smoothing)
         batch_ler = LetterErrorRate(torch.max(pred_y,dim=2)[1].cpu().numpy(),#.reshape(current_batch_size,max_label_len),
                                     torch.max(true_y,dim=2)[1].cpu().data.numpy(),data) #.reshape(current_batch_size,max_label_len), data)
@@ -122,7 +132,7 @@ def batch_iterator(batch_data, batch_label, las_module, optimizer, tf_rate, is_t
     if is_training:
         loss.backward()
         optimizer.step()
-
+        #print('is-training_loss',loss)
     batch_loss = loss.cpu().data.numpy()
     
 

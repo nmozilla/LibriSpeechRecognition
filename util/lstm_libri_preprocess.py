@@ -6,8 +6,12 @@ from tqdm import tqdm
 from joblib import Parallel, delayed
 import scipy.io.wavfile as wav
 from python_speech_features import logfbank
-
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
 import argparse
+import math
+#%matplotlib inline
 
 
 parser = argparse.ArgumentParser(description='Librispeech preprocess.')
@@ -45,8 +49,14 @@ n_jobs = 50
 n_filters = paras.n_filters
 win_size = paras.win_size
 norm_x = paras.norm_x
-print(norm_x)
+#print(norm_x)
 
+
+#with open('plot.jpg', 'w') as p:
+#    plt.plot([1,2,3,4])
+#    plt.show()            
+    
+#raiseError()
 def traverse(root,path,search_fix='.flac',return_label=False):
     f_list = []
 
@@ -93,6 +103,7 @@ print('Processing flac2wav...',flush=True)
 
 print('Training',flush=True)
 tr_file_list = traverse(root,train_path)          
+#print('tr_file_list_flac2wav',tr_file_list[0])
 results = Parallel(n_jobs=n_jobs,backend="threading")(delayed(flac2wav)(i) for i in tqdm(tr_file_list))
 
 print('Validation',flush=True)
@@ -112,6 +123,8 @@ print('Processing wav2logfbank...',flush=True)
 print('Training',flush=True)
 results = Parallel(n_jobs=n_jobs,backend="threading")(delayed(wav2logfbank)(i[:-4]+'wav') for i in tqdm(tr_file_list))
 
+
+
 print('Validation',flush=True)
 results = Parallel(n_jobs=n_jobs,backend="threading")(delayed(wav2logfbank)(i[:-4]+'wav') for i in tqdm(dev_file_list))
 
@@ -127,9 +140,19 @@ print('Preparing Training Dataset...',flush=True)
 tr_file_list = traverse(root,train_path,search_fix='.fb'+str(n_filters))
 tr_text = traverse(root,train_path,return_label=True)
 
+
 X = []
 for f in tr_file_list:
     X.append(np.load(f))
+   
+#c = 0
+#for s in X:
+#    cmap = plt.cm.jet
+#    norm = plt.Normalize(vmin=s.min(), vmax=s.max())
+#    image = cmap(norm(s))
+#    plt.imsave('myfig'+str(c)+'.png' , image)
+#    c += 1
+    
 
 # Normalize X
 if norm_x:
@@ -141,11 +164,19 @@ if norm_x:
 
 # Sort data by signal length (long to short)
 audio_len = [len(x) for x in X]
-
 tr_file_list = [tr_file_list[idx] for idx in reversed(np.argsort(audio_len))]
 tr_text = [tr_text[idx] for idx in reversed(np.argsort(audio_len))]
-for line in tr_text:
-    print('len each file',len(line))  
+text_lenght=[]
+#fixed_len_text=[]
+#for line in tr_text:
+#    if len(line)>90 and len(line)<110:
+#        fixed_len_text.append(line)
+    #print('len each file',len(line))
+    #text_lenght.append(len(line))
+
+#print('len fixed_len_text',len(fixed_len_text))
+#print('max len text',max(text_lenght))
+#print('min len text',min(text_lenght))
 
 # Create char mapping
 char_map = {}
@@ -153,15 +184,20 @@ char_map['<sos>'] = 0
 char_map['<eos>'] = 1
 char_idx = 2
 
+
+
 # map char to index
-for text in tr_text:
+for text in fixed_len_text:
     for char in text:
         if char not in char_map:
             char_map[char] = char_idx
             char_idx +=1
+
+
             
 # Reverse mapping
 rev_char_map = {v:k for k,v in char_map.items()}
+
 
 # Save mapping
 with open(root+'idx2chap.csv','w') as f:
@@ -171,7 +207,7 @@ with open(root+'idx2chap.csv','w') as f:
 
 # text to index sequence
 tmp_list = []
-for text in tr_text:
+for text in fixed_len_text:
     tmp = []
     for char in text:
         tmp.append(char_map[char])
@@ -179,8 +215,9 @@ for text in tr_text:
 tr_text = tmp_list
 del tmp_list
 
+
 # write dataset
-file_name = 'train.csv'
+file_name = 'small-train.csv'
 
 print('Writing dataset to '+root+file_name+'...',flush=True)
 
@@ -189,6 +226,7 @@ with open(root+file_name,'w') as f:
     for i in range(len(tr_file_list)):
         f.write(str(i)+',')
         f.write(tr_file_list[i]+',')
+#        if i < len(fixed_len_text):
         for char in tr_text[i]:
             f.write(' '+str(char))
         f.write('\n')
@@ -198,6 +236,7 @@ print('Preparing Validation Dataset...',flush=True)
 
 dev_file_list = traverse(root,dev_path,search_fix='.fb'+str(n_filters))
 dev_text = traverse(root,dev_path,return_label=True)
+
 
 X = []
 for f in dev_file_list:
@@ -214,9 +253,14 @@ audio_len = [len(x) for x in X]
 dev_file_list = [dev_file_list[idx] for idx in reversed(np.argsort(audio_len))]
 dev_text = [dev_text[idx] for idx in reversed(np.argsort(audio_len))]
 
+#fixed_len_dev_text=[]
+#for l in dev_text:
+#    if len(l)>90 and len(l)<110:
+#        fixed_len_dev_text.append(l)
+
 # text to index sequence
 tmp_list = []
-for text in dev_text:
+for text in fixed_len_dev_text:
     tmp = []
     for char in text:
         tmp.append(char_map[char])
@@ -225,7 +269,7 @@ dev_text = tmp_list
 del tmp_list
 
 # write dataset
-file_name = 'dev.csv'
+file_name = 'small-dev.csv'
 
 print('Writing dataset to '+root+file_name+'...',flush=True)
 
@@ -234,6 +278,8 @@ with open(root+file_name,'w') as f:
     for i in range(len(dev_file_list)):
         f.write(str(i)+',')
         f.write(dev_file_list[i]+',')
+#        if i < len(fixed_len_dev_text):
+#        for char in fixed_len_dev_text[i]:
         for char in dev_text[i]:
             f.write(' '+str(char))
         f.write('\n')
@@ -259,9 +305,15 @@ audio_len = [len(x) for x in X]
 test_file_list = [test_file_list[idx] for idx in reversed(np.argsort(audio_len))]
 tt_text = [tt_text[idx] for idx in reversed(np.argsort(audio_len))]
 
+#fixed_len_tt_text=[]
+#for t in tt_text:
+#    if len(t)>90 and len(t)<110:
+#        fixed_len_tt_text.append(t)
+
+
 # text to index sequence
 tmp_list = []
-for text in tt_text:
+for text in fixed_len_tt_text:
     tmp = []
     for char in text:
         tmp.append(char_map[char])
@@ -270,7 +322,7 @@ tt_text = tmp_list
 del tmp_list
 
 # write dataset
-file_name = 'test.csv'
+file_name = 'small-test.csv'
 
 print('Writing dataset to '+root+file_name+'...',flush=True)
 
@@ -279,6 +331,8 @@ with open(root+file_name,'w') as f:
     for i in range(len(test_file_list)):
         f.write(str(i)+',')
         f.write(test_file_list[i]+',')
+#        if i < len(fixed_len_tt_text):
+#        for char in fixed_len_tt_text[i]:
         for char in tt_text[i]:
             f.write(' '+str(char))
         f.write('\n')

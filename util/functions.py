@@ -70,7 +70,7 @@ def label_smoothing_loss(pred_y,true_y,label_smoothing=0.1):
     return loss
 
 
-def batch_iterator(batch_data, batch_label, listener, speller, optimizer, tf_rate, is_training, data='timit',**kwargs):
+def batch_iterator(batch_data, batch_label, listener, speller, optimizer, tf_rate, is_training, data='libri',**kwargs):
     bucketing = kwargs['bucketing']
     use_gpu = kwargs['use_gpu']
     output_class_dim = kwargs['output_class_dim']
@@ -93,6 +93,8 @@ def batch_iterator(batch_data, batch_label, listener, speller, optimizer, tf_rat
     # Forwarding
     optimizer.zero_grad()
     listner_feature = listener(batch_data)
+    print("listener(batch_data)",listner_feature)
+    print(listner_feature.shape)
     if is_training:
         raw_pred_seq, _ = speller(listner_feature,ground_truth=batch_label,teacher_force_rate=tf_rate)
     else:
@@ -103,7 +105,8 @@ def batch_iterator(batch_data, batch_label, listener, speller, optimizer, tf_rat
     if label_smoothing == 0.0 or not(is_training):
         pred_y = pred_y.permute(0,2,1)#pred_y.contiguous().view(-1,output_class_dim)
         true_y = torch.max(batch_label,dim=2)[1][:,:max_label_len].contiguous()#.view(-1)
-
+        print('pred_y',pred_y.shape)
+        print('true_y',true_y.shape)
         loss = criterion(pred_y,true_y)
         # variable -> numpy before sending into LER calculator
         batch_ler = LetterErrorRate(torch.max(pred_y.permute(0,2,1),dim=2)[1].cpu().numpy(),#.reshape(current_batch_size,max_label_len),

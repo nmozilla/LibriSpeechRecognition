@@ -69,6 +69,7 @@ if conf['training_parameter']['use_pretrained']:
 else:
     global_step = 0
     listener = Listener(**conf['model_parameter'])
+    #print("listener",listener)
     speller = Speller(**conf['model_parameter'])
 optimizer = torch.optim.Adam([{'params':listener.parameters()}, {'params':speller.parameters()}],
                              lr=conf['training_parameter']['learning_rate'])

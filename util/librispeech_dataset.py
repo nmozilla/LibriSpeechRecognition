@@ -28,7 +28,8 @@ def ZeroPadding(x,pad_len):
     features = x[0].shape[-1]
     new_x = np.zeros((len(x),pad_len,features))
     for idx,ins in enumerate(x):
-        new_x[idx,:len(ins),:] = ins
+        #new_x[idx,:len(ins),:] = ins
+        new_x[idx,pad_len - len(ins):,:] = ins # add zeros to the end of it
     return new_x
 
 # A transfer function for LAS label
@@ -37,20 +38,24 @@ def ZeroPadding(x,pad_len):
 # Input y: list of np array with shape ()
 # Output tuple: (indices, values, shape)
 def OneHotEncode(Y,max_len,max_idx=30):
+    #print('Y',Y)
     new_y = np.zeros((len(Y),max_len,max_idx))
     for idx,label_seq in enumerate(Y):
         cnt = 0
         for label in label_seq:
+            #print('label_seq',label)
             new_y[idx,cnt,label] = 1.0
+            
             cnt += 1
             if cnt == max_len-1:
                 break
         new_y[idx,cnt,1] = 1.0 # <eos>
+    #print('new_y', new_y.shape, len(Y[0]))
     return new_y
 
 
 class LibrispeechDataset(Dataset):
-    def __init__(self, data_path, batch_size, max_label_len,bucketing,listener_layer,drop_last=False,training=False):
+    def __init__(self, data_path, batch_size, max_label_len, bucketing,listener_layer,drop_last=False,training=False):
         print('Loading LibriSpeech data from',data_path,'...',flush=True)
 
         self.data_table = pd.read_csv(data_path,index_col=0)
@@ -65,6 +70,8 @@ class LibrispeechDataset(Dataset):
         if not bucketing:
             print('***Warning*** Loading LibriSpeech without bucketing requires large RAM')
             X,Y = load_dataset(data_path)
+            #print('x',X)
+            #print('y',Y)
             max_timestep = max([len(x) for x in X])
             self.X = ZeroPadding(X,max_timestep)
             self.Y = OneHotEncode(Y,max_label_len)
@@ -73,6 +80,7 @@ class LibrispeechDataset(Dataset):
             if self.training:
                 pass
             else:
+                
                 X,Y = load_dataset(data_path)
                 bucket_x = []
                 bucket_y = []
